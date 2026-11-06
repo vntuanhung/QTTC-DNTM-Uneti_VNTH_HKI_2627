@@ -44,7 +44,7 @@ function ansText(q, d) {
 
 /* ---------------- Khung chung ---------------- */
 function setNav() {
-  var tabs = [['home', 'Ôn tập theo tuần'], ['history', 'Lịch sử làm bài'], ['rank', 'Bảng xếp hạng']];
+  var tabs = [['home', 'Ôn tập theo tuần'], ['theory', 'Ôn lý thuyết'], ['history', 'Lịch sử làm bài'], ['rank', 'Bảng xếp hạng']];
   if (ST.user.admin) { tabs.push(['admin', 'Quản trị']); }
   $('#nav').innerHTML = tabs.map(function (t) { return '<button data-t="' + t[0] + '" class="' + (ST.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('');
   $('#whoami').textContent = ST.user.name + ' · ' + ST.user.msv + ' · ' + ST.user.lop;
@@ -55,7 +55,7 @@ $('#logout').addEventListener('click', function () { if (!ST.exam || confirm('B�
 
 function go(tab) {
   stopTimer(); ST.exam = null; ST.tab = tab; setNav();
-  if (tab === 'home') renderHome(); else if (tab === 'history') renderHistory(); else if (tab === 'rank') renderRank(); else if (tab === 'admin') renderAdmin();
+  if (tab === 'home') renderHome(); else if (tab === 'theory') renderTheory(); else if (tab === 'history') renderHistory(); else if (tab === 'rank') renderRank(); else if (tab === 'admin') renderAdmin();
   window.scrollTo(0, 0);
 }
 function logout(silent) {
@@ -104,18 +104,19 @@ function renderHome() {
   html += '<div class="grid">';
   ST.bank.weeks.forEach(function (w) {
     var c = weekCfg(w.week), open = isOpen(c), canStart = open || ST.user.admin, st = weekStats(w.week);
-    html += '<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><h2>Tuần ' + w.week + '</h2><span class="pill ' + (open ? 'open' : 'lock') + '">' + (open ? 'Đang mở' : 'Khóa') + '</span></div>' +
-      '<div><b>' + esc(w.title) + '</b></div><div class="mut">' + esc(w.chapter) + '</div>' +
-      '<div class="mut">' + (w.calc ? w.theory + ' trắc nghiệm + ' + w.calc + ' tính toán' : w.theory + ' trắc nghiệm') + '</div>' +
-      '<div class="mut">Đã hoàn thành ' + st.n + ' đề' + (st.best != null ? ' · cao nhất ' + fmtNum(st.best, 1) : '') + '</div>';
-    if (!open) html += '<div class="mut">' + esc(lockText(c)) + '</div>';
-    else if (c.to) html += '<div class="mut">Đóng lúc ' + esc(fmtDate(c.to)) + '</div>';
-    html += '<p><button class="btn start" data-w="' + w.week + '" ' + (!canStart || act ? 'disabled' : '') + '>Làm đề mới (ngẫu nhiên)</button></p></div>';
+    var note = !open ? lockText(c) : (c.to ? 'Đóng lúc ' + fmtDate(c.to) : 'Không giới hạn thời gian');
+    html += '<div class="wk"><div class="wk-h"><span class="wk-n">Tuần ' + w.week + '</span><span class="pill ' + (open ? 'open' : 'lock') + '">' + (open ? 'Đang mở' : 'Khóa') + '</span></div>' +
+      '<div class="wk-t">' + esc(w.title) + '</div><div class="wk-c">' + esc(w.chapter) + '</div>' +
+      '<div class="wk-m"><span>' + (w.calc ? w.theory + ' trắc nghiệm + ' + w.calc + ' tính toán' : w.theory + ' trắc nghiệm') + '</span><span>Đã nộp ' + st.n + ' đề' + (st.best != null ? ' · cao nhất ' + fmtNum(st.best, 1) : '') + '</span><span>' + esc(note) + '</span></div>' +
+      '<div class="wk-b"><button class="btn start" data-w="' + w.week + '" ' + (!canStart || act ? 'disabled' : '') + '>Làm đề ngẫu nhiên</button><button class="btn sec th" data-w="' + w.week + '">Ôn lý thuyết</button></div></div>';
   });
   app.innerHTML = html + '</div>';
   var r = $('#h_resume'); if (r) r.onclick = function () { openExam(); };
+  app.querySelectorAll('.th').forEach(function (b) { b.onclick = function () { ST.theoryWeek = Number(b.getAttribute('data-w')); ST.theoryTab = 'theory'; go('theory'); }; });
   app.querySelectorAll('.start').forEach(function (b) {
     b.onclick = function () {
+      var wkN = b.getAttribute('data-w');
+      if (!window.confirm('Bắt đầu làm đề NGẪU NHIÊN Tuần ' + wkN + '?\nSau khi bắt đầu, bạn phải hoàn thành và nộp đề này mới được làm đề khác.')) return;
       b.disabled = true; b.textContent = 'Đang tạo đề…';
       api('start', { week: Number(b.getAttribute('data-w')) }).then(function (j) { ST.active = j.active; openExam(); })
         .catch(function (e) { toast(e.message); refreshState().then(renderHome); });
@@ -137,7 +138,7 @@ function elapsed() { return ST.exam.baseSec + (Date.now() - ST.exam.t0) / 1000; 
 function saveDraft() { store(draftKey(ST.exam.id), { answers: ST.exam.answers }); }
 function renderExam() {
   var ex = ST.exam;
-  var html = '<div class="timer"><div><b>Tuần ' + ex.week + ' – Đề ngẫu nhiên</b><div class="mut" id="sv">Đã lưu ' + ex.saves + (ST.user.admin ? ' lần (không giới hạn)' : '/' + MAXA + ' lần') + '</div></div><div class="t" id="tm">' + fmtTime(elapsed()) + '</div><div><button class="btn sec" id="x_save">Lưu bài</button> <button class="btn" id="x_sub">Nộp bài & chấm điểm</button></div></div>';
+  var html = '<div class="timer"><div><b>Tuần ' + ex.week + ' – Đề ngẫu nhiên</b><div class="mut" id="sv">Đã lưu ' + ex.saves + (ST.user.admin ? ' lần (không giới hạn)' : '/' + MAXA + ' lần') + '</div></div><div class="t" id="tm">' + fmtTime(elapsed()) + '</div><div><button class="btn sec" id="x_save">Lưu bài</button> <button class="btn sec" id="x_dis">Hủy đề (chưa làm)</button> <button class="btn" id="x_sub">Nộp bài & chấm điểm</button></div></div>';
   ex.qids.forEach(function (id, i) {
     var q = findQuestion(id); if (!q) return;
     html += '<div class="q"><div><span class="n">Câu ' + (i + 1) + '.</span> ' + esc(q.text) + ' <span class="mut">(5 điểm)</span></div>';
@@ -154,8 +155,14 @@ function renderExam() {
   app.innerHTML = html;
   app.querySelectorAll('input[type=radio]').forEach(function (r) { r.onchange = function () { ex.answers[r.name] = r.value; saveDraft(); }; });
   app.querySelectorAll('input[data-q]').forEach(function (r) { r.oninput = function () { ex.answers[r.getAttribute('data-q')] = r.value; saveDraft(); }; });
+  $('#x_dis').onclick = discardExam;
   $('#x_save').onclick = saveExam;
   $('#x_sub').onclick = submitExam;
+}
+function discardExam() {
+  if (!confirm('Hủy đề này? Chỉ hủy được khi bạn CHƯA có câu trả lời nào đã lưu. Đề sẽ không được tính điểm.')) return;
+  api('discard', { id: ST.exam.id }).then(function () { store(draftKey(ST.exam.id), null); ST.active = null; ST.exam = null; toast('Đã hủy đề'); return refreshState(); }).then(function () { go('home'); })
+    .catch(function (er) { toast(er.message); });
 }
 function setBusy(b) { ['#x_save', '#x_sub'].forEach(function (s) { var e = $(s); if (e) e.disabled = b; }); }
 function saveExam() {
@@ -182,22 +189,55 @@ function finishExam(j) {
   renderResult(j);
 }
 function renderResult(j) {
-  var html = '<div class="card" style="text-align:center"><div class="mut">Tuần ' + j.week + (j.auto ? ' · bài được tự động nộp do đã lưu quá ' + MAXA + ' lần' : '') + '</div><div class="score">' + fmtNum(j.score, 1) + '/100</div><div>Đúng ' + j.correct + '/' + j.total + ' câu · thời gian làm bài ' + fmtTime(j.seconds) + '</div>' +
-    '<p><button class="btn" id="r_home">Về trang chọn tuần</button> <button class="btn sec" id="r_rank">Xem xếp hạng</button></p></div>';
-  html += '<div class="card"><h2>Các câu bỏ trống hoặc làm sai</h2><p class="mut">Đề đã nộp không thể làm lại; bạn có thể xem lại các câu này trong mục Lịch sử làm bài.</p></div>' + reviewHtml(j.detail, true);
+  var html = '<div class="card center"><div class="mut">Tuần ' + j.week + (j.auto ? ' · bài được tự động nộp do đã lưu quá ' + MAXA + ' lần' : '') + '</div><div class="score">' + fmtNum(j.score, 1) + '/100</div><div>Đúng ' + j.correct + '/' + j.total + ' câu · thời gian làm bài ' + fmtTime(j.seconds) + '</div>' +
+    '<p><button class="btn" id="r_home">Về trang chọn tuần</button> <button class="btn sec" id="r_rank">Xem xếp hạng</button></p></div>' +
+    '<div class="card"><h2>Đáp án và lời giải chi tiết</h2><p class="mut">Mỗi câu hiển thị công thức, thay số, kết quả và giải thích. Đề đã nộp không thể làm lại; bạn có thể xem lại trong mục Lịch sử làm bài.</p>' + filterBar() + '</div><div id="rv">' + reviewHtml(j.detail, false) + '</div>';
   app.innerHTML = html; setNav();
   $('#r_home').onclick = function () { go('home'); };
   $('#r_rank').onclick = function () { ST.rankWeek = j.week; go('rank'); };
+  bindFilter(j.detail, '#rv');
   window.scrollTo(0, 0);
+}
+function filterBar() { return '<div class="seg" id="flt"><button class="on" data-f="all">Tất cả câu</button><button data-f="wrong">Chỉ câu sai / bỏ trống</button></div>'; }
+function bindFilter(detail, sel) {
+  var bar = $('#flt'); if (!bar) return;
+  bar.onclick = function (e) { var f = e.target.getAttribute('data-f'); if (!f) return; bar.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === e.target); }); $(sel).innerHTML = reviewHtml(detail, f === 'wrong'); hydrate(); };
+  hydrate();
+}
+function solHtml(txt) {
+  var names = { 'CT': 'Công thức', 'TS': 'Thay số', 'KQ': 'Kết quả', 'GT': 'Giải thích' }, out = '';
+  String(txt).split('\n').forEach(function (l) { var m = /^(CT|TS|KQ|GT): ?(.*)$/.exec(l); if (m) out += '<div class="sl ' + m[1] + '"><b>' + names[m[1]] + '</b><span>' + esc(m[2]) + '</span></div>'; else if (l.trim()) out += '<div class="sl"><span>' + esc(l) + '</span></div>'; });
+  return out;
+}
+var SOLS = null;
+function loadSols() { return SOLS ? Promise.resolve(SOLS) : fetch('solutions.json').then(function (r) { return r.json(); }).then(function (j) { SOLS = j; return j; }); }
+function hex2buf(h) { var b = new Uint8Array(h.length / 2); for (var i = 0; i < b.length; i++) b[i] = parseInt(h.substr(i * 2, 2), 16); return b; }
+function decrypt(b64, keyHex) {
+  var raw = Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); });
+  return crypto.subtle.importKey('raw', hex2buf(keyHex), 'AES-GCM', false, ['decrypt']).then(function (k) {
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: raw.slice(0, 12) }, k, raw.slice(12));
+  }).then(function (buf) { return new TextDecoder().decode(buf); });
+}
+function hydrate() {
+  var els = app.querySelectorAll('.exp[data-q]:not([data-done])'); if (!els.length) return;
+  loadSols().then(function (S) {
+    els.forEach(function (el) {
+      el.setAttribute('data-done', '1');
+      var enc = S[el.getAttribute('data-q')], key = el.getAttribute('data-k');
+      if (!enc || !key) { el.innerHTML = '<span class="mut">Chưa có lời giải cho câu này.</span>'; return; }
+      decrypt(enc, key).then(function (t) { el.innerHTML = solHtml(t); }).catch(function () { el.innerHTML = '<span class="mut">Không giải mã được lời giải.</span>'; });
+    });
+  }).catch(function () { els.forEach(function (el) { el.innerHTML = '<span class="mut">Không tải được lời giải (solutions.json).</span>'; }); });
 }
 function reviewHtml(detail, onlyWrong) {
   var list = detail.map(function (d, i) { return { d: d, i: i }; }).filter(function (x) { return !onlyWrong || !x.d.ok; });
   if (!list.length) return '<div class="card">Bạn trả lời đúng tất cả các câu. Tuyệt vời!</div>';
   return list.map(function (x) {
-    var d = x.d, q = findQuestion(d.q);
-    return '<div class="q ' + (d.ok ? 'ok' : 'bad') + '"><div><span class="n">Câu ' + (x.i + 1) + '</span> ' + (d.ok ? '✓ Đúng' : (d.a ? '✗ Sai' : '✗ Bỏ trống')) + '</div><div>' + esc(q ? q.text : d.q) + '</div>' +
-      '<div class="mut">Bạn trả lời: <b>' + esc(ansText(q, d)) + '</b></div>' + (d.ok ? '' : '<div class="mut">Đáp án đúng: <b>' + esc(keyText(q, d)) + '</b></div>') +
-      (d.s && q && q.type === 'fill' ? '<div class="exp">' + esc(d.s) + '</div>' : '') + '</div>';
+    var d = x.d, q = findQuestion(d.q), opts = '';
+    if (q && q.type === 'mcq') opts = '<div class="ropts">' + q.options.map(function (o, j) { var cls = L[j] === d.k ? 'k' : (L[j] === String(d.a).toUpperCase() ? 'w' : ''); return '<div class="ro ' + cls + '"><b>' + L[j] + '.</b> ' + esc(o) + '</div>'; }).join('') + '</div>';
+    return '<div class="q ' + (d.ok ? 'ok' : 'bad') + '"><div class="qh"><span class="n">Câu ' + (x.i + 1) + '</span><span class="tag ' + (d.ok ? 'ok' : 'bad') + '">' + (d.ok ? '✓ Đúng' : (d.a ? '✗ Sai' : '✗ Bỏ trống')) + '</span></div><div class="qt">' + esc(q ? q.text : d.q) + '</div>' + opts +
+      '<div class="ans"><div>Bạn trả lời: <b>' + esc(ansText(q, d)) + '</b></div>' + (d.ok ? '' : '<div>Đáp án đúng: <b>' + esc(keyText(q, d)) + '</b></div>') + '</div>' +
+      '<div class="exp" data-q="' + esc(d.q) + '" data-k="' + esc(d.s || '') + '"><span class="mut">Đang tải lời giải…</span></div></div>';
   }).join('');
 }
 
@@ -215,16 +255,45 @@ function renderHistory() {
       return '<tr><td>' + w + '</td><td>' + l.length + '</td><td>' + fmtNum(l.reduce(function (s, a) { return s + a.score; }, 0) / l.length, 1) + '</td><td>' + fmtNum(Math.max.apply(null, l.map(function (a) { return a.score; })), 1) + '</td><td>' + fmtNum(c / t * 100, 1) + '%</td></tr>';
     }).join('') + '</table></div>';
   html += '<div class="card"><h2>Các đề đã nộp</h2><table><tr><th>Nộp lúc</th><th>Tuần</th><th>Điểm</th><th>Đúng</th><th>Thời lượng</th><th></th></tr>' +
-    h.map(function (a, i) { return '<tr><td>' + esc(fmtDate(a.time)) + '</td><td>' + a.week + '</td><td><b>' + fmtNum(a.score, 1) + '</b></td><td>' + a.correct + '/' + a.total + '</td><td>' + fmtTime(a.seconds) + '</td><td><button class="link" data-i="' + i + '">Xem câu sai/bỏ trống</button></td></tr>'; }).join('') + '</table></div>';
+    h.map(function (a, i) { return '<tr><td>' + esc(fmtDate(a.time)) + '</td><td>' + a.week + '</td><td><b>' + fmtNum(a.score, 1) + '</b></td><td>' + a.correct + '/' + a.total + '</td><td>' + fmtTime(a.seconds) + '</td><td><button class="link" data-i="' + i + '">Xem đáp án và lời giải</button></td></tr>'; }).join('') + '</table></div>';
   // câu sai (theo lần làm gần nhất của từng câu)
   var latest = {}; ST.history.slice().sort(function (a, b) { return a.time < b.time ? -1 : 1; }).forEach(function (a) { (a.detail || []).forEach(function (d) { var o = latest[d.q] || (latest[d.q] = { wrong: 0, last: null }); if (!d.ok) o.wrong++; o.last = d; }); });
   var wrongs = Object.keys(latest).filter(function (k) { return !latest[k].last.ok; });
   html += '<div class="card"><h2>Các câu làm sai (' + wrongs.length + ')</h2><p class="mut">Hiển thị các câu mà lần làm gần nhất của bạn vẫn sai.</p>' +
     (wrongs.length ? reviewHtml(wrongs.map(function (k) { return latest[k].last; }), true) : '<div>Không có câu sai nào – tuyệt vời!</div>') + '</div>';
-  app.innerHTML = html;
+  app.innerHTML = html; hydrate();
   app.querySelectorAll('button[data-i]').forEach(function (b) {
-    b.onclick = function () { var a = h[Number(b.getAttribute('data-i'))]; app.innerHTML = '<p><button class="btn sec" id="h_back">← Quay lại</button></p><div class="card"><h2>Tuần ' + a.week + ' · bài đã nộp</h2><div class="score">' + fmtNum(a.score, 1) + '/100</div><div class="mut">' + esc(fmtDate(a.time)) + ' · ' + fmtTime(a.seconds) + '</div></div>' + reviewHtml(a.detail, true); $('#h_back').onclick = renderHistory; window.scrollTo(0, 0); };
+    b.onclick = function () { var a = h[Number(b.getAttribute('data-i'))]; app.innerHTML = '<p><button class="btn sec" id="h_back">← Quay lại</button></p><div class="card center"><h2>Tuần ' + a.week + ' · bài đã nộp</h2><div class="score">' + fmtNum(a.score, 1) + '/100</div><div class="mut">' + esc(fmtDate(a.time)) + ' · ' + fmtTime(a.seconds) + '</div></div>' + reviewHtml(a.detail, false); hydrate(); $('#h_back').onclick = renderHistory; window.scrollTo(0, 0); };
   });
+}
+
+/* ---------------- Ôn lý thuyết ---------------- */
+function loadTheory() { return ST.theory ? Promise.resolve(ST.theory) : fetch('theory.json').then(function (r) { return r.json(); }).then(function (j) { ST.theory = j; return j; }); }
+function renderTheory() {
+  var w = ST.theoryWeek || defaultWeek(), tab = ST.theoryTab || 'theory'; ST.theoryWeek = w; ST.theoryTab = tab;
+  app.innerHTML = '<h1>Ôn lý thuyết</h1><div class="card"><label>Chọn tuần</label><select id="t_w">' + ST.bank.weeks.map(function (x) { return '<option value="' + x.week + '" ' + (x.week === w ? 'selected' : '') + '>Tuần ' + x.week + ' – ' + esc(x.title) + '</option>'; }).join('') + '</select>' +
+    '<div class="seg" id="t_tabs"><button data-t="theory" class="' + (tab === 'theory' ? 'on' : '') + '">1. Lý thuyết</button><button data-t="formulas" class="' + (tab === 'formulas' ? 'on' : '') + '">2. Công thức và ví dụ</button></div></div><div id="t_body">Đang tải…</div>';
+  $('#t_w').onchange = function () { ST.theoryWeek = Number(this.value); renderTheory(); };
+  $('#t_tabs').onclick = function (e) { var t = e.target.getAttribute('data-t'); if (t) { ST.theoryTab = t; renderTheory(); } };
+  loadTheory().then(function (T) {
+    var d = T.weeks.filter(function (x) { return x.week === w; })[0], b = $('#t_body'); if (!b) return;
+    if (!d) { b.innerHTML = '<div class="card">Chưa có nội dung cho tuần này.</div>'; return; }
+    var h = '';
+    if (tab === 'theory') {
+      h = d.theory.map(function (s) { return '<div class="card"><h2>' + esc(s.h) + '</h2><ul class="pts">' + s.points.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>'; }).join('');
+    } else if (!d.formulas.length) {
+      h = '<div class="card">Tuần này là nội dung lý thuyết, không có công thức tính toán. Hãy chuyển sang phần "1. Lý thuyết".</div>';
+    } else {
+      h = d.formulas.map(function (f, i) {
+        var ex = f.example;
+        return '<div class="card"><h2>' + (i + 1) + '. ' + esc(f.name) + '</h2><pre class="fm">' + esc(f.formula) + '</pre>' +
+          (f.vars && f.vars.length ? '<ul class="pts vars">' + f.vars.map(function (v) { return '<li>' + esc(v) + '</li>'; }).join('') + '</ul>' : '') +
+          (f.note ? '<div class="note">Lưu ý: ' + esc(f.note) + '</div>' : '') +
+          (ex ? '<div class="eg"><div class="eg-h">Ví dụ</div><div>' + esc(ex.de) + '</div><ol class="pts">' + (ex.giai || []).map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ol><div class="eg-k">' + esc(ex.kq) + '</div></div>' : '') + '</div>';
+      }).join('');
+    }
+    b.innerHTML = h;
+  }).catch(function () { var b = $('#t_body'); if (b) b.innerHTML = '<div class="err">Không tải được theory.json</div>'; });
 }
 
 /* ---------------- Bảng xếp hạng ---------------- */
