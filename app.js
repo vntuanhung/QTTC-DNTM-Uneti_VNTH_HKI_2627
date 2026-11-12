@@ -31,6 +31,7 @@ function isOpen(c) { var n = Date.now(); if (!c.open) return false; if (c.from &
 function lockText(c) { if (!c.open) return 'Đang khóa'; if (c.from && Date.now() < Date.parse(c.from)) return 'Mở lúc ' + fmtDate(c.from); if (c.to && Date.now() > Date.parse(c.to)) return 'Đã đóng lúc ' + fmtDate(c.to); return ''; }
 function findQuestion(qid) { return ST.qmap[qid] || null; }
 var L = 'ABCD';
+function wkLabel(w) { return w === 101 ? 'Tổng hợp lý thuyết' : w === 102 ? 'Tổng hợp tính toán' : 'Tuần ' + w; }
 function keyText(q, d) {
   if (!q) return String(d.k);
   if (q.type === 'mcq') { var i = L.indexOf(d.k); return d.k + '. ' + (q.options[i] || ''); }
@@ -44,7 +45,7 @@ function ansText(q, d) {
 
 /* ---------------- Khung chung ---------------- */
 function setNav() {
-  var tabs = [['home', 'Ôn tập theo tuần'], ['theory', 'Ôn lý thuyết'], ['history', 'Lịch sử làm bài'], ['rank', 'Bảng xếp hạng']];
+  var tabs = [['home', 'Ôn tập theo tuần'], ['theory', 'Ôn lý thuyết'], ['mix', 'Ôn tổng hợp'], ['history', 'Lịch sử làm bài'], ['rank', 'Bảng xếp hạng']];
   if (ST.user.admin) { tabs.push(['admin', 'Quản trị']); }
   $('#nav').innerHTML = tabs.map(function (t) { return '<button data-t="' + t[0] + '" class="' + (ST.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('');
   $('#whoami').textContent = ST.user.name + ' · ' + ST.user.msv + ' · ' + ST.user.lop;
@@ -55,7 +56,7 @@ $('#logout').addEventListener('click', function () { if (!ST.exam || confirm('B�
 
 function go(tab) {
   stopTimer(); ST.exam = null; ST.tab = tab; setNav();
-  if (tab === 'home') renderHome(); else if (tab === 'theory') renderTheory(); else if (tab === 'history') renderHistory(); else if (tab === 'rank') renderRank(); else if (tab === 'admin') renderAdmin();
+  if (tab === 'home') renderHome(); else if (tab === 'theory') renderTheory(); else if (tab === 'mix') renderMix(); else if (tab === 'history') renderHistory(); else if (tab === 'rank') renderRank(); else if (tab === 'admin') renderAdmin();
   window.scrollTo(0, 0);
 }
 function logout(silent) {
@@ -99,7 +100,7 @@ function renderHome() {
   var act = ST.active;
   var html = '<h1>Chọn tuần ôn tập</h1><p class="mut">Mỗi lần bắt đầu, hệ thống <b>chọn ngẫu nhiên</b> đề từ ngân hàng câu hỏi của tuần (khác nhau giữa các sinh viên và giữa các lần làm). Tuần 1: 20 câu trắc nghiệm lý thuyết. Tuần 2–14 (trừ tuần 5, 11): 5 câu trắc nghiệm + 15 câu tính toán điền đáp số. Mỗi câu 5 điểm, tổng 100 điểm. Bạn được <b>lưu bài tối đa ' + MAXA + ' lần</b> trong một đề; hoàn thành (nộp) đề này mới được làm đề khác.</p>';
   if (act) {
-    html += '<div class="card" style="border-color:var(--pri)"><h2>Bạn đang làm dở một đề</h2><div>Tuần ' + act.week + ' · bắt đầu ' + esc(fmtDate(act.startedAt)) + ' · đã lưu ' + act.saves + (ST.user.admin ? ' lần' : '/' + MAXA + ' lần') + ' · thời gian đã làm ' + fmtTime(act.seconds) + '</div><p><button class="btn" id="h_resume">Tiếp tục làm đề</button></p></div>';
+    html += '<div class="card" style="border-color:var(--pri)"><h2>Bạn đang làm dở một đề</h2><div>' + wkLabel(act.week) + ' · bắt đầu ' + esc(fmtDate(act.startedAt)) + ' · đã lưu ' + act.saves + (ST.user.admin ? ' lần' : '/' + MAXA + ' lần') + ' · thời gian đã làm ' + fmtTime(act.seconds) + '</div><p><button class="btn" id="h_resume">Tiếp tục làm đề</button></p></div>';
   }
   html += '<div class="grid">';
   ST.bank.weeks.forEach(function (w) {
@@ -116,7 +117,7 @@ function renderHome() {
   app.querySelectorAll('.start').forEach(function (b) {
     b.onclick = function () {
       var wkN = b.getAttribute('data-w');
-      if (!window.confirm('Bắt đầu làm đề NGẪU NHIÊN Tuần ' + wkN + '?\nSau khi bắt đầu, bạn phải hoàn thành và nộp đề này mới được làm đề khác.')) return;
+      if (!window.confirm('Bắt đầu làm đề NGẪU NHIÊN ' + wkLabel(Number(wkN)) + '?\nSau khi bắt đầu, bạn phải hoàn thành và nộp đề này mới được làm đề khác.')) return;
       b.disabled = true; b.textContent = 'Đang tạo đề…';
       api('start', { week: Number(b.getAttribute('data-w')) }).then(function (j) { ST.active = j.active; openExam(); })
         .catch(function (e) { toast(e.message); refreshState().then(renderHome); });
@@ -138,7 +139,7 @@ function elapsed() { return ST.exam.baseSec + (Date.now() - ST.exam.t0) / 1000; 
 function saveDraft() { store(draftKey(ST.exam.id), { answers: ST.exam.answers }); }
 function renderExam() {
   var ex = ST.exam;
-  var html = '<div class="timer"><div><b>Tuần ' + ex.week + ' – Đề ngẫu nhiên</b><div class="mut" id="sv">Đã lưu ' + ex.saves + (ST.user.admin ? ' lần (không giới hạn)' : '/' + MAXA + ' lần') + '</div></div><div class="t" id="tm">' + fmtTime(elapsed()) + '</div><div><button class="btn sec" id="x_save">Lưu bài</button> <button class="btn sec" id="x_dis">Hủy đề (chưa làm)</button> <button class="btn" id="x_sub">Nộp bài & chấm điểm</button></div></div>';
+  var html = '<div class="timer"><div><b>' + wkLabel(ex.week) + ' – Đề ngẫu nhiên</b><div class="mut" id="sv">Đã lưu ' + ex.saves + (ST.user.admin ? ' lần (không giới hạn)' : '/' + MAXA + ' lần') + '</div></div><div class="t" id="tm">' + fmtTime(elapsed()) + '</div><div><button class="btn sec" id="x_save">Lưu bài</button> <button class="btn sec" id="x_dis">Hủy đề (chưa làm)</button> <button class="btn" id="x_sub">Nộp bài & chấm điểm</button></div></div>';
   ex.qids.forEach(function (id, i) {
     var q = findQuestion(id); if (!q) return;
     html += '<div class="q"><div><span class="n">Câu ' + (i + 1) + '.</span> ' + esc(q.text) + ' <span class="mut">(5 điểm)</span></div>';
@@ -189,12 +190,12 @@ function finishExam(j) {
   renderResult(j);
 }
 function renderResult(j) {
-  var html = '<div class="card center"><div class="mut">Tuần ' + j.week + (j.auto ? ' · bài được tự động nộp do đã lưu quá ' + MAXA + ' lần' : '') + '</div><div class="score">' + fmtNum(j.score, 1) + '/100</div><div>Đúng ' + j.correct + '/' + j.total + ' câu · thời gian làm bài ' + fmtTime(j.seconds) + '</div>' +
+  var html = '<div class="card center"><div class="mut">' + wkLabel(j.week) + (j.auto ? ' · bài được tự động nộp do đã lưu quá ' + MAXA + ' lần' : '') + '</div><div class="score">' + fmtNum(j.score, 1) + '/100</div><div>Đúng ' + j.correct + '/' + j.total + ' câu · thời gian làm bài ' + fmtTime(j.seconds) + '</div>' +
     '<p><button class="btn" id="r_home">Về trang chọn tuần</button> <button class="btn sec" id="r_rank">Xem xếp hạng</button></p></div>' +
     '<div class="card"><h2>Đáp án và lời giải chi tiết</h2><p class="mut">Mỗi câu hiển thị công thức, thay số, kết quả và giải thích. Đề đã nộp không thể làm lại; bạn có thể xem lại trong mục Lịch sử làm bài.</p>' + filterBar() + '</div><div id="rv">' + reviewHtml(j.detail, false) + '</div>';
   app.innerHTML = html; setNav();
   $('#r_home').onclick = function () { go('home'); };
-  $('#r_rank').onclick = function () { ST.rankWeek = j.week; go('rank'); };
+  $('#r_rank').onclick = function () { if (j.week >= 100) { ST.mixMode = j.week; go('mix'); } else { ST.rankWeek = j.week; go('rank'); } };
   bindFilter(j.detail, '#rv');
   window.scrollTo(0, 0);
 }
@@ -252,10 +253,10 @@ function renderHistory() {
   html += '<div class="card"><h2>Theo từng tuần</h2><table><tr><th>Tuần</th><th>Số lượt</th><th>Điểm TB</th><th>Cao nhất</th><th>% đúng</th></tr>' +
     Object.keys(byW).sort(function (a, b) { return a - b; }).map(function (w) {
       var l = byW[w], c = l.reduce(function (s, a) { return s + a.correct; }, 0), t = l.reduce(function (s, a) { return s + a.total; }, 0);
-      return '<tr><td>' + w + '</td><td>' + l.length + '</td><td>' + fmtNum(l.reduce(function (s, a) { return s + a.score; }, 0) / l.length, 1) + '</td><td>' + fmtNum(Math.max.apply(null, l.map(function (a) { return a.score; })), 1) + '</td><td>' + fmtNum(c / t * 100, 1) + '%</td></tr>';
+      return '<tr><td>' + wkLabel(Number(w)) + '</td><td>' + l.length + '</td><td>' + fmtNum(l.reduce(function (s, a) { return s + a.score; }, 0) / l.length, 1) + '</td><td>' + fmtNum(Math.max.apply(null, l.map(function (a) { return a.score; })), 1) + '</td><td>' + fmtNum(c / t * 100, 1) + '%</td></tr>';
     }).join('') + '</table></div>';
   html += '<div class="card"><h2>Các đề đã nộp</h2><table><tr><th>Nộp lúc</th><th>Tuần</th><th>Điểm</th><th>Đúng</th><th>Thời lượng</th><th></th></tr>' +
-    h.map(function (a, i) { return '<tr><td>' + esc(fmtDate(a.time)) + '</td><td>' + a.week + '</td><td><b>' + fmtNum(a.score, 1) + '</b></td><td>' + a.correct + '/' + a.total + '</td><td>' + fmtTime(a.seconds) + '</td><td><button class="link" data-i="' + i + '">Xem đáp án và lời giải</button></td></tr>'; }).join('') + '</table></div>';
+    h.map(function (a, i) { return '<tr><td>' + esc(fmtDate(a.time)) + '</td><td>' + wkLabel(a.week) + '</td><td><b>' + fmtNum(a.score, 1) + '</b></td><td>' + a.correct + '/' + a.total + '</td><td>' + fmtTime(a.seconds) + '</td><td><button class="link" data-i="' + i + '">Xem đáp án và lời giải</button></td></tr>'; }).join('') + '</table></div>';
   // câu sai (theo lần làm gần nhất của từng câu)
   var latest = {}; ST.history.slice().sort(function (a, b) { return a.time < b.time ? -1 : 1; }).forEach(function (a) { (a.detail || []).forEach(function (d) { var o = latest[d.q] || (latest[d.q] = { wrong: 0, last: null }); if (!d.ok) o.wrong++; o.last = d; }); });
   var wrongs = Object.keys(latest).filter(function (k) { return !latest[k].last.ok; });
@@ -263,7 +264,7 @@ function renderHistory() {
     (wrongs.length ? reviewHtml(wrongs.map(function (k) { return latest[k].last; }), true) : '<div>Không có câu sai nào – tuyệt vời!</div>') + '</div>';
   app.innerHTML = html; hydrate();
   app.querySelectorAll('button[data-i]').forEach(function (b) {
-    b.onclick = function () { var a = h[Number(b.getAttribute('data-i'))]; app.innerHTML = '<p><button class="btn sec" id="h_back">← Quay lại</button></p><div class="card center"><h2>Tuần ' + a.week + ' · bài đã nộp</h2><div class="score">' + fmtNum(a.score, 1) + '/100</div><div class="mut">' + esc(fmtDate(a.time)) + ' · ' + fmtTime(a.seconds) + '</div></div>' + reviewHtml(a.detail, false); hydrate(); $('#h_back').onclick = renderHistory; window.scrollTo(0, 0); };
+    b.onclick = function () { var a = h[Number(b.getAttribute('data-i'))]; app.innerHTML = '<p><button class="btn sec" id="h_back">← Quay lại</button></p><div class="card center"><h2>' + wkLabel(a.week) + ' · bài đã nộp</h2><div class="score">' + fmtNum(a.score, 1) + '/100</div><div class="mut">' + esc(fmtDate(a.time)) + ' · ' + fmtTime(a.seconds) + '</div></div>' + reviewHtml(a.detail, false); hydrate(); $('#h_back').onclick = renderHistory; window.scrollTo(0, 0); };
   });
 }
 
@@ -296,6 +297,40 @@ function renderTheory() {
   }).catch(function () { var b = $('#t_body'); if (b) b.innerHTML = '<div class="err">Không tải được theory.json</div>'; });
 }
 
+/* ---------------- Ôn tổng hợp (trộn các chương) ---------------- */
+function renderMix(mode) {
+  mode = mode || ST.mixMode || 100; ST.mixMode = mode; var act = ST.active;
+  function card(w, title, desc) {
+    var c = weekCfg(w), open = isOpen(c), st = weekStats(w);
+    return '<div class="wk"><div class="wk-h"><span class="wk-n">' + title + '</span><span class="pill ' + (open ? 'open' : 'lock') + '">' + (open ? 'Đang mở' : 'Khóa') + '</span></div><div class="wk-t">20 câu trộn các chương</div><div class="wk-c">' + desc + '</div>' +
+      '<div class="wk-m"><span>Đã nộp ' + st.n + ' đề' + (st.best != null ? ' · cao nhất ' + fmtNum(st.best, 1) : '') + '</span><span>' + (open ? 'Mỗi lần bốc đề mới khác nhau' : esc(lockText(c))) + '</span></div>' +
+      '<div class="wk-b" style="grid-template-columns:1fr"><button class="btn start" data-w="' + w + '" ' + (!(open || ST.user.admin) || act ? 'disabled' : '') + '>Làm đề ngẫu nhiên</button></div></div>';
+  }
+  var html = '<h1>Ôn tổng hợp</h1><p class="mut">Hai bộ đề riêng, mỗi đề 20 câu (5 điểm/câu, tổng 100 điểm) được bốc ngẫu nhiên từ <b>tất cả các chương</b>. Quy tắc lưu bài, nộp bài giống ôn theo tuần. Kết quả xếp hạng <b>chung toàn bộ các lớp</b>, tách riêng với bảng xếp hạng theo tuần.</p>';
+  if (act) html += '<div class="card" style="border-color:var(--pri)"><h2>Bạn đang làm dở một đề</h2><div>' + wkLabel(act.week) + ' · đã lưu ' + act.saves + ' lần</div><p><button class="btn" id="h_resume">Tiếp tục làm đề</button></p></div>';
+  html += '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">' + card(101, 'Tổng hợp lý thuyết', '20 câu trắc nghiệm lý thuyết từ các chương 1–6.') + card(102, 'Tổng hợp tính toán', '20 câu tính toán điền đáp số từ các chương 2–6.') + '</div>' +
+    '<h2 style="margin-top:20px">Bảng xếp hạng tổng hợp</h2><div class="card"><div class="seg" id="m_seg"><button data-m="100" class="' + (mode === 100 ? 'on' : '') + '">Cả hai loại đề</button><button data-m="101" class="' + (mode === 101 ? 'on' : '') + '">Lý thuyết</button><button data-m="102" class="' + (mode === 102 ? 'on' : '') + '">Tính toán</button></div>' +
+    '<p class="mut">Điểm = trung bình các đề đã nộp. Cùng điểm thì làm ít đề hơn xếp trên.</p><div id="m_t">Đang tải…</div></div>';
+  app.innerHTML = html;
+  var r = $('#h_resume'); if (r) r.onclick = function () { openExam(); };
+  $('#m_seg').onclick = function (e) { var m = e.target.getAttribute('data-m'); if (m) renderMix(Number(m)); };
+  app.querySelectorAll('.start').forEach(function (b) {
+    b.onclick = function () {
+      var w = Number(b.getAttribute('data-w'));
+      if (!window.confirm('Bắt đầu làm đề NGẪU NHIÊN ' + wkLabel(w) + '?\nSau khi bắt đầu, bạn phải hoàn thành và nộp đề này mới được làm đề khác.')) return;
+      b.disabled = true; b.textContent = 'Đang tạo đề…';
+      api('start', { week: w }).then(function (j) { ST.active = j.active; openExam(); }).catch(function (e) { toast(e.message); refreshState().then(function () { renderMix(mode); }); });
+    };
+  });
+  api('leaderboard', { week: mode }).then(function (j) {
+    var t = $('#m_t'); if (!t) return;
+    if (!j.rows.length) { t.innerHTML = 'Chưa có ai làm đề tổng hợp.'; return; }
+    var me = j.rows.filter(function (x) { return x.me; })[0];
+    t.innerHTML = (me ? '<p><b>Thứ hạng của bạn: ' + me.rank + '/' + j.rows.length + '</b></p>' : '') +
+      '<table><tr><th>Hạng</th><th>Họ tên</th><th>Lớp</th><th>MSV</th><th>Điểm</th><th>Số đề</th></tr>' + j.rows.map(function (x) { return '<tr class="' + (x.me ? 'me' : '') + '"><td>' + x.rank + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.lop) + '</td><td>' + esc(x.msv) + '</td><td>' + fmtNum(x.score, 2) + '</td><td>' + x.exams + '</td></tr>'; }).join('') + '</table>';
+  }).catch(function (e) { var t = $('#m_t'); if (t) t.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+}
+
 /* ---------------- Bảng xếp hạng ---------------- */
 function defaultWeek() {
   var open = ST.bank.weeks.filter(function (w) { return isOpen(weekCfg(w.week)); });
@@ -324,9 +359,9 @@ function renderAdmin() {
   api('config').then(function (j) {
     ST.config = j.config;
     var html = '<h1>Quản trị: mở / khóa bài tập tuần</h1><div class="card"><p class="mut">Đặt thời điểm mở và đóng cho từng tuần (để trống = không giới hạn). Bỏ chọn "Mở" để khóa hẳn tuần. Giờ hiển thị theo múi giờ máy của bạn.</p>' +
-      '<table><tr><th>Tuần</th><th>Mở</th><th>Từ</th><th>Đến</th><th>Ghi chú</th></tr>' + ST.bank.weeks.map(function (w) {
+      '<table><tr><th>Tuần</th><th>Mở</th><th>Từ</th><th>Đến</th><th>Ghi chú</th></tr>' + ST.bank.weeks.concat([{ week: 101, title: 'Tổng hợp lý thuyết' }, { week: 102, title: 'Tổng hợp tính toán' }]).map(function (w) {
         var c = weekCfg(w.week);
-        return '<tr data-w="' + w.week + '"><td>' + w.week + '</td><td><input type="checkbox" class="a_o" style="width:auto" ' + (c.open ? 'checked' : '') + '></td><td><input type="datetime-local" class="a_f" value="' + toLocalInput(c.from) + '"></td><td><input type="datetime-local" class="a_t" value="' + toLocalInput(c.to) + '"></td><td><input class="a_n" value="' + esc(c.note || '') + '"></td></tr>';
+        return '<tr data-w="' + w.week + '"><td>' + wkLabel(w.week) + '</td><td><input type="checkbox" class="a_o" style="width:auto" ' + (c.open ? 'checked' : '') + '></td><td><input type="datetime-local" class="a_f" value="' + toLocalInput(c.from) + '"></td><td><input type="datetime-local" class="a_t" value="' + toLocalInput(c.to) + '"></td><td><input class="a_n" value="' + esc(c.note || '') + '"></td></tr>';
       }).join('') + '</table><p><button class="btn" id="a_save">Lưu cấu hình</button></p></div>';
     app.innerHTML = html;
     $('#a_save').onclick = function () {
