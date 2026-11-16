@@ -340,7 +340,7 @@ function renderRank(week, lop) {
   week = week || ST.rankWeek || defaultWeek(); lop = lop || ST.rankLop || CLASSES[0]; ST.rankWeek = week; ST.rankLop = lop;
   var html = '<h1>Bảng xếp hạng theo tuần</h1><div class="card"><div class="row"><div><label>Tuần</label><select id="k_w">' + ST.bank.weeks.map(function (w) { return '<option value="' + w.week + '" ' + (w.week === week ? 'selected' : '') + '>Tuần ' + w.week + ' – ' + esc(w.title) + '</option>'; }).join('') + '</select></div>' +
     (ST.user.admin ? '<div><label>Lớp</label><select id="k_l">' + CLASSES.map(function (c) { return '<option ' + (c === lop ? 'selected' : '') + '>' + c + '</option>'; }).join('') + '</select></div>' : '') + '</div>' +
-    '<p class="mut">Điểm tuần = điểm trung bình các đề đã nộp trong tuần. Cùng điểm thì bạn làm ít đề hơn xếp trên.</p><div id="k_t">Đang tải…</div></div>';
+    '<p class="mut">Xếp hạng theo <b>tổng điểm</b> của tất cả các đề đã nộp trong tuần (làm càng nhiều đề, điểm càng cao thì tổng càng lớn). Bằng tổng điểm thì xét điểm trung bình.</p><div id="k_t">Đang tải…</div></div>';
   app.innerHTML = html;
   $('#k_w').onchange = function () { renderRank(Number(this.value), ST.rankLop); };
   var kl = $('#k_l'); if (kl) kl.onchange = function () { renderRank(ST.rankWeek, this.value); };
@@ -349,7 +349,7 @@ function renderRank(week, lop) {
     if (!j.rows.length) { t.innerHTML = 'Chưa có ai làm bài trong tuần này (lớp ' + esc(j.lop) + ').'; return; }
     var me = j.rows.filter(function (r) { return r.me; })[0];
     t.innerHTML = (me ? '<p><b>Thứ hạng của bạn: ' + me.rank + '/' + j.rows.length + '</b> (lớp ' + esc(j.lop) + ')</p>' : '') +
-      '<table><tr><th>Hạng</th><th>Họ tên</th><th>MSV</th><th>Điểm</th><th>Số đề đã ôn</th></tr>' + j.rows.map(function (r) { return '<tr class="' + (r.me ? 'me' : '') + '"><td>' + r.rank + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.msv) + '</td><td>' + fmtNum(r.score, 2) + '</td><td>' + r.exams + '</td></tr>'; }).join('') + '</table>';
+      '<div class="tw"><table><tr><th>Hạng</th><th>Họ tên</th><th>MSV</th><th>Tổng điểm</th><th>Điểm TB</th><th>Số đề</th></tr>' + j.rows.map(function (r) { return '<tr class="' + (r.me ? 'me' : '') + '"><td>' + r.rank + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.msv) + '</td><td><b>' + fmtNum(r.total, 1) + '</b></td><td>' + fmtNum(r.score, 2) + '</td><td>' + r.exams + '</td></tr>'; }).join('') + '</table></div>';
   }).catch(function (e) { var t = $('#k_t'); if (t) t.innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
 }
 
