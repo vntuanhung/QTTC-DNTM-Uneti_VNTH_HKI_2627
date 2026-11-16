@@ -122,3 +122,28 @@ tbody tr:hover td{background:var(--acc)}
 .eg{border-style:solid;border-color:var(--line);background:var(--field);border-radius:14px}
 .toast{color:var(--ink);border-radius:14px}
 @media(max-width:600px){.top{border-radius:18px;top:6px}nav{overflow-x:auto;flex-wrap:nowrap;max-width:100%}nav button{white-space:nowrap}.timer{top:8px;position:static}h1{font-size:23px}.score{font-size:42px}}
+
+/* ---------- Công thức kiểu toán học ---------- */
+.fm{background:linear-gradient(135deg,#0d1470,#1a2390);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:18px 20px;margin:0 0 10px;text-align:center;
+  font:400 21px/1.75 "Cambria Math","Cambria","STIX Two Math","Times New Roman",Times,serif;white-space:normal;overflow-x:auto;box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 10px 24px rgba(13,20,112,.28)}
+.fm i,.sl.CT i{font-style:italic;font-family:"Cambria Math","Cambria","STIX Two Math","Times New Roman",Times,serif}
+.fm sub,.fm sup,.sl sub,.sl sup{font-size:.68em;line-height:0}
+.fm div+div{margin-top:4px}
+.sl.CT span{font:400 17px/1.6 "Cambria Math","Cambria","STIX Two Math","Times New Roman",Times,serif}
+@media(max-width:600px){.fm{font-size:17px;padding:14px 12px;text-align:left}}
+
+/* ---------- Công thức trên nền kính trong suốt ---------- */
+.fm{background:linear-gradient(135deg,rgba(255,255,255,.62),rgba(255,255,255,.28));color:var(--ink);border:1px solid var(--glass-b);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 -1px 0 rgba(255,255,255,.3) inset,0 8px 24px rgba(40,60,130,.12)}
+.fm i{color:var(--pri)}
+@media(prefers-color-scheme:dark){.fm{background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04));box-shadow:0 1px 0 rgba(255,255,255,.16) inset,0 8px 24px rgba(0,0,0,.4)}}
+.exp{background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.22));border:1px solid var(--glass-b);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:0 1px 0 rgba(255,255,255,.8) inset;padding:12px 14px;gap:8px}
+@media(prefers-color-scheme:dark){.exp{background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.03));box-shadow:0 1px 0 rgba(255,255,255,.12) inset}}
+.sl.CT span,.sl.TS span,.sl.KQ span{font:400 17.5px/1.65 "Cambria Math","Cambria","STIX Two Math","Times New Roman",Times,serif}
+.sl.KQ span{font-weight:700}
+.sl i{font-style:italic;font-family:"Cambria Math","Cambria","STIX Two Math","Times New Roman",Times,serif;color:var(--pri)}
+.sl.GT i{font-size:1.06em}
+.sl.CT span{background:rgba(255,255,255,.5);border:1px solid var(--glass-b);border-radius:10px;padding:4px 12px;justify-self:start}
+@media(prefers-color-scheme:dark){.sl.CT span{background:rgba(255,255,255,.07)}}
+.eg i,.pts.vars i,.note i{font-style:italic;font-family:"Cambria Math","Cambria","STIX Two Math","Times New Roman",Times,serif;color:var(--pri);font-size:1.06em}
+.eg sub,.eg sup,.pts sub,.pts sup,.note sub,.note sup{font-size:.7em;line-height:0}

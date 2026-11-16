@@ -205,9 +205,31 @@ function bindFilter(detail, sel) {
   bar.onclick = function (e) { var f = e.target.getAttribute('data-f'); if (!f) return; bar.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b === e.target); }); $(sel).innerHTML = reviewHtml(detail, f === 'wrong'); hydrate(); };
   hydrate();
 }
+/* Hiển thị công thức kiểu toán học: biến in nghiêng, chỉ số dưới/trên */
+var SUBS = { kd: 1, ke: 1, kn: 1, kp: 1, ks: 1, rf: 1, rm: 1, rd: 1, re: 1, rdt: 1, we: 1, wd: 1, wp: 1, wn: 1, Cb: 1, Vb: 1, Dp: 1, Pp: 1, Pn: 1, At: 1, Vt: 1, Tn: 1, CFt: 2, Clk: 1, Cdh: 1 };
+function fmtMath(txt) {
+  var parts = String(txt).split(/(\^\([^)]*\)|\^[−-]?[A-Za-z0-9]+)/);
+  return parts.map(function (seg) {
+    if (seg.charAt(0) === '^') return '<sup>' + esc(seg.slice(1).replace(/^\(|\)$/g, '')) + '</sup>';
+    var out = '', last = 0, re = /[\p{L}\p{N}_*]+/gu, m;
+    while ((m = re.exec(seg))) { out += esc(seg.slice(last, m.index)) + mathTok(m[0]); last = m.index + m[0].length; }
+    return out + esc(seg.slice(last));
+  }).join('');
+}
+function mathTok(t) {
+  if (!/^[A-Za-z0-9_*]+$/.test(t) || /^\d+$/.test(t)) return esc(t);
+  var star = ''; if (/\*$/.test(t)) { star = '<sup>*</sup>'; t = t.slice(0, -1); } if (!t) return '*';
+  var m;
+  if ((m = /^([A-Za-z]+)_([A-Za-z0-9]+)$/.exec(t))) return '<i>' + m[1] + '</i><sub>' + m[2] + '</sub>' + star;
+  if (SUBS[t]) { var k = SUBS[t]; return '<i>' + t.slice(0, k) + '</i><sub>' + t.slice(k) + '</sub>' + star; }
+  if ((m = /^([A-Za-z]{1,2})(\d)$/.exec(t))) return '<i>' + m[1] + '</i><sub>' + m[2] + '</sub>' + star;
+  if (/^[A-Za-z]$/.test(t)) return '<i>' + t + '</i>' + star;
+  return esc(t) + star;
+}
+function fmtMathBlock(txt) { return String(txt).split('\n').map(function (l) { return '<div>' + fmtMath(l) + '</div>'; }).join(''); }
 function solHtml(txt) {
   var names = { 'CT': 'Công thức', 'TS': 'Thay số', 'KQ': 'Kết quả', 'GT': 'Giải thích' }, out = '';
-  String(txt).split('\n').forEach(function (l) { var m = /^(CT|TS|KQ|GT): ?(.*)$/.exec(l); if (m) out += '<div class="sl ' + m[1] + '"><b>' + names[m[1]] + '</b><span>' + esc(m[2]) + '</span></div>'; else if (l.trim()) out += '<div class="sl"><span>' + esc(l) + '</span></div>'; });
+  String(txt).split('\n').forEach(function (l) { var m = /^(CT|TS|KQ|GT): ?(.*)$/.exec(l); if (m) out += '<div class="sl ' + m[1] + '"><b>' + names[m[1]] + '</b><span>' + fmtMath(m[2]) + '</span></div>'; else if (l.trim()) out += '<div class="sl"><span>' + esc(l) + '</span></div>'; });
   return out;
 }
 var SOLS = null;
@@ -287,10 +309,10 @@ function renderTheory() {
     } else {
       h = d.formulas.map(function (f, i) {
         var ex = f.example;
-        return '<div class="card"><h2>' + (i + 1) + '. ' + esc(f.name) + '</h2><pre class="fm">' + esc(f.formula) + '</pre>' +
-          (f.vars && f.vars.length ? '<ul class="pts vars">' + f.vars.map(function (v) { return '<li>' + esc(v) + '</li>'; }).join('') + '</ul>' : '') +
-          (f.note ? '<div class="note">Lưu ý: ' + esc(f.note) + '</div>' : '') +
-          (ex ? '<div class="eg"><div class="eg-h">Ví dụ</div><div>' + esc(ex.de) + '</div><ol class="pts">' + (ex.giai || []).map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ol><div class="eg-k">' + esc(ex.kq) + '</div></div>' : '') + '</div>';
+        return '<div class="card"><h2>' + (i + 1) + '. ' + esc(f.name) + '</h2><div class="fm">' + fmtMathBlock(f.formula) + '</div>' +
+          (f.vars && f.vars.length ? '<ul class="pts vars">' + f.vars.map(function (v) { return '<li>' + fmtMath(v) + '</li>'; }).join('') + '</ul>' : '') +
+          (f.note ? '<div class="note">Lưu ý: ' + fmtMath(f.note) + '</div>' : '') +
+          (ex ? '<div class="eg"><div class="eg-h">Ví dụ</div><div>' + fmtMath(ex.de) + '</div><ol class="pts">' + (ex.giai || []).map(function (g) { return '<li>' + fmtMath(g) + '</li>'; }).join('') + '</ol><div class="eg-k">' + fmtMath(ex.kq) + '</div></div>' : '') + '</div>';
       }).join('');
     }
     b.innerHTML = h;
