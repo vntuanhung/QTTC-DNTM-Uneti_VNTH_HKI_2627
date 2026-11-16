@@ -147,3 +147,19 @@ tbody tr:hover td{background:var(--acc)}
 @media(prefers-color-scheme:dark){.sl.CT span{background:rgba(255,255,255,.07)}}
 .eg i,.pts.vars i,.note i{font-style:italic;font-family:"Cambria Math","Cambria","STIX Two Math","Times New Roman",Times,serif;color:var(--pri);font-size:1.06em}
 .eg sub,.eg sup,.pts sub,.pts sup,.note sub,.note sup{font-size:.7em;line-height:0}
+
+/* ---------- Chân trang ---------- */
+body{display:flex;flex-direction:column}main{flex:1;width:100%}
+.foot{max-width:1100px;width:calc(100% - 32px);margin:8px auto 24px;padding:22px 24px 16px;border-radius:22px;background:var(--card);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--glass-b);box-shadow:var(--sh);font-size:14.5px;color:var(--mut)}
+.foot-in{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.foot-info{display:grid;gap:4px;min-width:0}.foot-t{font-weight:800;font-size:16.5px;color:var(--ink)}.foot-info b{color:var(--ink)}
+.foot-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.foot-links a{display:inline-block;padding:8px 14px;border-radius:99px;background:var(--field);border:1px solid var(--glass-b);color:var(--pri);font-weight:600;text-decoration:none;box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 4px 12px rgba(40,60,130,.08);transition:transform .15s,filter .2s}
+.foot-links a:hover,.foot-qr:hover img{transform:translateY(-1px);filter:brightness(1.05)}
+.foot-links a:focus-visible,.foot-qr:focus-visible{outline:3px solid rgba(90,124,255,.55);outline-offset:2px}
+.foot-qr{display:grid;justify-items:center;gap:6px;text-decoration:none;color:var(--mut);font-size:12.5px}
+.foot-qr img{border-radius:14px;background:#fff;padding:6px;border:1px solid var(--glass-b);box-shadow:0 6px 16px rgba(40,60,130,.14);transition:transform .15s}
+.foot-note{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;text-align:center}
+@media(max-width:600px){.foot{width:calc(100% - 24px);padding:18px 16px 14px}.foot-in{justify-content:center;text-align:center}.foot-links{justify-content:center}}
+.foot-note{text-align:left;line-height:1.6}.foot-note p{margin:0}.foot-ver{margin-top:6px!important;font-weight:600;color:var(--ink)}
+.foot-info{gap:5px;line-height:1.5}

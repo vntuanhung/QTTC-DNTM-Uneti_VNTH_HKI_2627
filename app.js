@@ -55,7 +55,7 @@ $('#nav').addEventListener('click', function (e) { var t = e.target.getAttribute
 $('#logout').addEventListener('click', function () { if (!ST.exam || confirm('Bài đang làm chưa lưu sẽ được giữ nháp trên máy này. Đăng xuất?')) logout(); });
 
 function go(tab) {
-  stopTimer(); ST.exam = null; ST.tab = tab; setNav();
+  stopTimer(); ST.exam = null; ST.tab = tab; setNav(); showFoot(tab === 'home' || tab === 'theory' || tab === 'mix');
   if (tab === 'home') renderHome(); else if (tab === 'theory') renderTheory(); else if (tab === 'mix') renderMix(); else if (tab === 'history') renderHistory(); else if (tab === 'rank') renderRank(); else if (tab === 'admin') renderAdmin();
   window.scrollTo(0, 0);
 }
@@ -63,10 +63,12 @@ function logout(silent) {
   stopTimer(); ST.user = null; ST.token = null; ST.exam = null; ST.active = null; store('qttc_session', null);
   $('#top').classList.add('hidden'); renderLogin();
 }
+function showFoot(on) { var f = $('#foot'); if (f) f.classList.toggle('hidden', !on); }
 function stopTimer() { if (ST.timer) { clearInterval(ST.timer); ST.timer = null; } }
 
 /* ---------------- Đăng nhập ---------------- */
 function renderLogin(msg) {
+  showFoot(false);
   var prev = store('qttc_last') || {};
   app.innerHTML = '<div class="card login"><h1>Đăng nhập ôn tập</h1><p class="mut">Môn Quản trị tài chính trong doanh nghiệp thương mại</p>' +
     '<label>Họ và tên</label><input id="l_name" autocomplete="name" value="' + esc(prev.name || '') + '">' +
@@ -131,7 +133,7 @@ function openExam() {
   var a = ST.active; if (!a) return go('home');
   var d = store(draftKey(a.id));
   ST.exam = { id: a.id, week: a.week, qids: a.qids, answers: d && d.answers ? d.answers : Object.assign({}, a.answers), baseSec: a.seconds, t0: Date.now(), saves: a.saves };
-  ST.tab = 'home'; setNav(); stopTimer(); renderExam();
+  ST.tab = 'home'; setNav(); stopTimer(); showFoot(false); renderExam();
   ST.timer = setInterval(function () { var t = $('#tm'); if (t) t.textContent = fmtTime(elapsed()); }, 1000);
   window.scrollTo(0, 0);
 }
