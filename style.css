@@ -163,3 +163,13 @@ body{display:flex;flex-direction:column}main{flex:1;width:100%}
 @media(max-width:600px){.foot{width:calc(100% - 24px);padding:18px 16px 14px}.foot-in{justify-content:center;text-align:center}.foot-links{justify-content:center}}
 .foot-note{text-align:left;line-height:1.6}.foot-note p{margin:0}.foot-ver{margin-top:6px!important;font-weight:600;color:var(--ink)}
 .foot-info{gap:5px;line-height:1.5}
+
+/* ---------- Chống bôi đen / sao chép ---------- */
+body{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select{-webkit-user-select:text;user-select:text}
+img{-webkit-user-drag:none;user-drag:none}
+@media print{body{display:none!important}}
+/* ---------- Ôn theo chương ---------- */
+.chs{display:grid;gap:10px;margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
+.chb{display:grid;gap:4px}.chb .btn{width:100%}
+.chb .btn.sec:disabled{opacity:.5;cursor:not-allowed}

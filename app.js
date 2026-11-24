@@ -31,7 +31,8 @@ function isOpen(c) { var n = Date.now(); if (!c.open) return false; if (c.from &
 function lockText(c) { if (!c.open) return 'Đang khóa'; if (c.from && Date.now() < Date.parse(c.from)) return 'Mở lúc ' + fmtDate(c.from); if (c.to && Date.now() > Date.parse(c.to)) return 'Đã đóng lúc ' + fmtDate(c.to); return ''; }
 function findQuestion(qid) { return ST.qmap[qid] || null; }
 var L = 'ABCD';
-function wkLabel(w) { return w === 101 ? 'Tổng hợp lý thuyết' : w === 102 ? 'Tổng hợp tính toán' : 'Tuần ' + w; }
+function wkLabel(w) { return w === 101 ? 'Tổng hợp lý thuyết' : w === 102 ? 'Tổng hợp tính toán' : w >= 300 ? 'Chương ' + (w % 100) + ' – Bài tập' : w >= 200 ? 'Chương ' + (w % 100) + ' – Lý thuyết' : 'Tuần ' + w; }
+var CHAPTERS = [[1, 'Tổng quan về QTTC trong DNTM', 'Tuần 1'], [2, 'Giá trị thời gian của tiền tệ', 'Tuần 2'], [3, 'Phân tích tình hình tài chính DN', 'Tuần 3–4'], [4, 'Quản trị vốn lưu động', 'Tuần 6–7'], [5, 'Chi phí sử dụng vốn của DN', 'Tuần 8–10'], [6, 'Hoạch định tài chính trong DN', 'Tuần 12–14']];
 function keyText(q, d) {
   if (!q) return String(d.k);
   if (q.type === 'mcq') { var i = L.indexOf(d.k); return d.k + '. ' + (q.options[i] || ''); }
@@ -45,7 +46,7 @@ function ansText(q, d) {
 
 /* ---------------- Khung chung ---------------- */
 function setNav() {
-  var tabs = [['home', 'Ôn tập theo tuần'], ['theory', 'Ôn lý thuyết'], ['mix', 'Ôn tổng hợp'], ['history', 'Lịch sử làm bài'], ['rank', 'Bảng xếp hạng']];
+  var tabs = [['home', 'Ôn tập theo tuần'], ['theory', 'Ôn lý thuyết'], ['chapter', 'Ôn theo chương'], ['mix', 'Ôn tổng hợp'], ['history', 'Lịch sử làm bài'], ['rank', 'Bảng xếp hạng']];
   if (ST.user.admin) { tabs.push(['admin', 'Quản trị']); }
   $('#nav').innerHTML = tabs.map(function (t) { return '<button data-t="' + t[0] + '" class="' + (ST.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('');
   $('#whoami').textContent = ST.user.name + ' · ' + ST.user.msv + ' · ' + ST.user.lop;
@@ -55,8 +56,8 @@ $('#nav').addEventListener('click', function (e) { var t = e.target.getAttribute
 $('#logout').addEventListener('click', function () { if (!ST.exam || confirm('Bài đang làm chưa lưu sẽ được giữ nháp trên máy này. Đăng xuất?')) logout(); });
 
 function go(tab) {
-  stopTimer(); ST.exam = null; ST.tab = tab; setNav(); showFoot(tab === 'home' || tab === 'theory' || tab === 'mix');
-  if (tab === 'home') renderHome(); else if (tab === 'theory') renderTheory(); else if (tab === 'mix') renderMix(); else if (tab === 'history') renderHistory(); else if (tab === 'rank') renderRank(); else if (tab === 'admin') renderAdmin();
+  stopTimer(); ST.exam = null; ST.tab = tab; setNav(); showFoot(tab === 'home' || tab === 'theory' || tab === 'mix' || tab === 'chapter');
+  if (tab === 'home') renderHome(); else if (tab === 'theory') renderTheory(); else if (tab === 'mix') renderMix(); else if (tab === 'chapter') renderChapter(); else if (tab === 'history') renderHistory(); else if (tab === 'rank') renderRank(); else if (tab === 'admin') renderAdmin();
   window.scrollTo(0, 0);
 }
 function logout(silent) {
@@ -197,7 +198,7 @@ function renderResult(j) {
     '<div class="card"><h2>Đáp án và lời giải chi tiết</h2><p class="mut">Mỗi câu hiển thị công thức, thay số, kết quả và giải thích. Đề đã nộp không thể làm lại; bạn có thể xem lại trong mục Lịch sử làm bài.</p>' + filterBar() + '</div><div id="rv">' + reviewHtml(j.detail, false) + '</div>';
   app.innerHTML = html; setNav();
   $('#r_home').onclick = function () { go('home'); };
-  $('#r_rank').onclick = function () { if (j.week >= 100) { ST.mixMode = j.week; go('mix'); } else { ST.rankWeek = j.week; go('rank'); } };
+  $('#r_rank').onclick = function () { if (j.week >= 200) { go('chapter'); } else if (j.week >= 100) { ST.mixMode = j.week; go('mix'); } else { ST.rankWeek = j.week; go('rank'); } };
   bindFilter(j.detail, '#rv');
   window.scrollTo(0, 0);
 }
@@ -321,6 +322,31 @@ function renderTheory() {
   }).catch(function () { var b = $('#t_body'); if (b) b.innerHTML = '<div class="err">Không tải được theory.json</div>'; });
 }
 
+/* ---------------- Ôn theo chương ---------------- */
+function renderChapter() {
+  var act = ST.active;
+  function btn(w, label) {
+    var c = weekCfg(w), open = isOpen(c), st = weekStats(w);
+    return '<div class="chb"><button class="btn ' + (w >= 300 ? 'sec ' : '') + 'start" data-w="' + w + '" ' + (!(open || ST.user.admin) || act ? 'disabled' : '') + '>' + label + '</button><span class="mut">' + (open ? 'Đã nộp ' + st.n + ' đề' + (st.best != null ? ' · cao nhất ' + fmtNum(st.best, 1) : '') : esc(lockText(c))) + '</span></div>';
+  }
+  var html = '<h1>Ôn theo chương</h1><p class="mut">Ôn riêng từng chương: phần <b>Lý thuyết</b> gồm 20 câu trắc nghiệm, phần <b>Bài tập</b> gồm 20 câu tính toán điền đáp số, bốc ngẫu nhiên từ các tuần thuộc chương đó. Quy tắc lưu bài, nộp bài và xem lời giải giống ôn theo tuần.</p>';
+  if (act) html += '<div class="card" style="border-color:var(--pri)"><h2>Bạn đang làm dở một đề</h2><div>' + wkLabel(act.week) + ' · đã lưu ' + act.saves + ' lần</div><p><button class="btn" id="h_resume">Tiếp tục làm đề</button></p></div>';
+  html += '<div class="grid">' + CHAPTERS.map(function (c) {
+    return '<div class="wk"><div class="wk-h"><span class="wk-n">Chương ' + c[0] + '</span><span class="mut">' + c[2] + '</span></div><div class="wk-t">' + esc(c[1]) + '</div>' +
+      '<div class="chs">' + btn(200 + c[0], 'Lý thuyết (20 câu)') + (c[0] > 1 ? btn(300 + c[0], 'Bài tập (20 câu)') : '<div class="chb"><button class="btn sec" disabled title="Chương 1 không có bài tập tính toán">Bài tập (20 câu)</button><span class="mut">Chương 1 không có bài tập tính toán</span></div>') + '</div></div>';
+  }).join('') + '</div>';
+  app.innerHTML = html;
+  var r = $('#h_resume'); if (r) r.onclick = function () { openExam(); };
+  app.querySelectorAll('.start').forEach(function (b) {
+    b.onclick = function () {
+      var w = Number(b.getAttribute('data-w'));
+      if (!window.confirm('Bắt đầu làm đề NGẪU NHIÊN ' + wkLabel(w) + '?\nSau khi bắt đầu, bạn phải hoàn thành và nộp đề này mới được làm đề khác.')) return;
+      b.disabled = true; b.textContent = 'Đang tạo đề…';
+      api('start', { week: w }).then(function (j) { ST.active = j.active; openExam(); }).catch(function (e) { toast(e.message); refreshState().then(renderChapter); });
+    };
+  });
+}
+
 /* ---------------- Ôn tổng hợp (trộn các chương) ---------------- */
 function renderMix(mode) {
   mode = mode || ST.mixMode || 100; ST.mixMode = mode; var act = ST.active;
@@ -383,7 +409,7 @@ function renderAdmin() {
   api('config').then(function (j) {
     ST.config = j.config;
     var html = '<h1>Quản trị: mở / khóa bài tập tuần</h1><div class="card"><p class="mut">Đặt thời điểm mở và đóng cho từng tuần (để trống = không giới hạn). Bỏ chọn "Mở" để khóa hẳn tuần. Giờ hiển thị theo múi giờ máy của bạn.</p>' +
-      '<table><tr><th>Tuần</th><th>Mở</th><th>Từ</th><th>Đến</th><th>Ghi chú</th></tr>' + ST.bank.weeks.concat([{ week: 101, title: 'Tổng hợp lý thuyết' }, { week: 102, title: 'Tổng hợp tính toán' }]).map(function (w) {
+      '<table><tr><th>Tuần</th><th>Mở</th><th>Từ</th><th>Đến</th><th>Ghi chú</th></tr>' + ST.bank.weeks.concat([{ week: 101 }, { week: 102 }], CHAPTERS.map(function (c) { return { week: 200 + c[0] }; }), CHAPTERS.slice(1).map(function (c) { return { week: 300 + c[0] }; })).map(function (w) {
         var c = weekCfg(w.week);
         return '<tr data-w="' + w.week + '"><td>' + wkLabel(w.week) + '</td><td><input type="checkbox" class="a_o" style="width:auto" ' + (c.open ? 'checked' : '') + '></td><td><input type="datetime-local" class="a_f" value="' + toLocalInput(c.from) + '"></td><td><input type="datetime-local" class="a_t" value="' + toLocalInput(c.to) + '"></td><td><input class="a_n" value="' + esc(c.note || '') + '"></td></tr>';
       }).join('') + '</table><p><button class="btn" id="a_save">Lưu cấu hình</button></p></div>';
@@ -400,6 +426,17 @@ function renderAdmin() {
 }
 
 /* ---------------- Khởi động ---------------- */
+/* Chống sao chép nội dung (trừ ô nhập liệu) */
+(function () {
+  var inField = function (e) { var t = e.target; return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable); };
+  ['copy', 'cut', 'contextmenu', 'selectstart', 'dragstart'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { if (!inField(e)) { e.preventDefault(); if (ev === 'copy' || ev === 'cut') toast('Nội dung ôn tập không cho phép sao chép.'); } });
+  });
+  document.addEventListener('keydown', function (e) {
+    var k = (e.key || '').toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && ['c', 'x', 'a', 's', 'p', 'u'].indexOf(k) >= 0 && !inField(e)) { e.preventDefault(); }
+  });
+})();
 function boot() {
   fetch('questions.json').then(function (r) { return r.json(); }).then(function (b) {
     ST.bank = b; ST.qmap = {}; b.weeks.forEach(function (w) { w.questions.forEach(function (q) { ST.qmap[q.id] = q; }); });
