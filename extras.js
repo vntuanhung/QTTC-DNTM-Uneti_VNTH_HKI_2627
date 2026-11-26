@@ -3,7 +3,7 @@
   'use strict';
   var CUR = { v: 'v26.05', d: '26/11/2026' };
   var HIST = [
-    { v: 'v26.05', d: '26/11/2026', items: ['Cập nhật nội dung bài tập mới: bộ 50 đề luyện vẽ đồ thị chi phí sử dụng vốn cận biên (MCC).', 'Bổ sung lịch sử phiên bản.'] },
+    { v: 'v26.05', d: '26/11/2026', items: ['Cập nhật nội dung bài tập mới: vẽ đồ thị chi phí sử dụng vốn cận biên (MCC).'] },
     { v: 'v26.04', d: '24/11/2026', items: ['Cập nhật giao diện website.', 'Cập nhật cơ chế ôn tập và làm bài mới.', 'Chỉnh sửa cơ chế trên hệ thống.'] },
     { v: 'v26.03', d: '16/11/2026', items: ['Cập nhật giao diện website.', 'Cập nhật cơ chế ôn tập và làm bài mới.', 'Chỉnh sửa lỗi hệ thống trên máy chủ.'] },
     { v: 'v26.02', d: '06/11/2026', items: ['Chỉnh sửa và cập nhật nội dung các câu hỏi học tập.', 'Chỉnh sửa lỗi hệ thống trên máy chủ.'] },

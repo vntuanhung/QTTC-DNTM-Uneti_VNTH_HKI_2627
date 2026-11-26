@@ -29,7 +29,10 @@ function weekInfo(w) { return ST.bank.weeks.filter(function (x) { return x.week 
 function weekCfg(w) { return ST.config.filter(function (c) { return c.week === w; })[0] || { week: w, open: true, from: '', to: '' }; }
 function isOpen(c) { var n = Date.now(); if (!c.open) return false; if (c.from && n < Date.parse(c.from)) return false; if (c.to && n > Date.parse(c.to)) return false; return true; }
 function lockText(c) { if (!c.open) return 'Đang khóa'; if (c.from && Date.now() < Date.parse(c.from)) return 'Mở lúc ' + fmtDate(c.from); if (c.to && Date.now() > Date.parse(c.to)) return 'Đã đóng lúc ' + fmtDate(c.to); return ''; }
-function findQuestion(qid) { return ST.qmap[qid] || null; }
+function findQuestion(qid) {
+  if (!ST.qmap[qid] && window.MCC && window.MCC.isId(qid)) ST.qmap[qid] = window.MCC.question(qid);
+  return ST.qmap[qid] || null;
+}
 var L = 'ABCD';
 function wkLabel(w) { return w === 101 ? 'Tổng hợp lý thuyết' : w === 102 ? 'Tổng hợp tính toán' : w >= 300 ? 'Chương ' + (w % 100) + ' – Bài tập' : w >= 200 ? 'Chương ' + (w % 100) + ' – Lý thuyết' : 'Tuần ' + w; }
 var CHAPTERS = [[1, 'Tổng quan về QTTC trong DNTM', 'Tuần 1'], [2, 'Giá trị thời gian của tiền tệ', 'Tuần 2'], [3, 'Phân tích tình hình tài chính DN', 'Tuần 3–4'], [4, 'Quản trị vốn lưu động', 'Tuần 6–7'], [5, 'Chi phí sử dụng vốn của DN', 'Tuần 8–10'], [6, 'Hoạch định tài chính trong DN', 'Tuần 12–14']];
@@ -101,7 +104,7 @@ function refreshState() {
 function weekStats(w) { var l = ST.history.filter(function (a) { return a.week === w; }); return { n: l.length, best: l.length ? Math.max.apply(null, l.map(function (a) { return a.score; })) : null }; }
 function renderHome() {
   var act = ST.active;
-  var html = '<h1>Chọn tuần ôn tập</h1><p class="mut">Mỗi lần bắt đầu, hệ thống <b>chọn ngẫu nhiên</b> đề từ ngân hàng câu hỏi của tuần (khác nhau giữa các sinh viên và giữa các lần làm). Tuần 1: 20 câu trắc nghiệm lý thuyết. Tuần 2–14 (trừ tuần 5, 11): 5 câu trắc nghiệm + 15 câu tính toán điền đáp số. Mỗi câu 5 điểm, tổng 100 điểm. Bạn được <b>lưu bài tối đa ' + MAXA + ' lần</b> trong một đề; hoàn thành (nộp) đề này mới được làm đề khác.</p>';
+  var html = '<h1>Chọn tuần ôn tập</h1><p class="mut">Mỗi lần bắt đầu, hệ thống <b>chọn ngẫu nhiên</b> đề từ ngân hàng câu hỏi của tuần (khác nhau giữa các sinh viên và giữa các lần làm). Tuần 1: 20 câu trắc nghiệm lý thuyết. Tuần 2–14 (trừ tuần 5, 11): 5 câu trắc nghiệm + 15 câu tính toán điền đáp số (riêng tuần 10 có 1 câu vẽ đồ thị MCC thay cho 1 câu tính toán). Mỗi câu 5 điểm, tổng 100 điểm. Bạn được <b>lưu bài tối đa ' + MAXA + ' lần</b> trong một đề; hoàn thành (nộp) đề này mới được làm đề khác.</p>';
   if (act) {
     html += '<div class="card" style="border-color:var(--pri)"><h2>Bạn đang làm dở một đề</h2><div>' + wkLabel(act.week) + ' · bắt đầu ' + esc(fmtDate(act.startedAt)) + ' · đã lưu ' + act.saves + (ST.user.admin ? ' lần' : '/' + MAXA + ' lần') + ' · thời gian đã làm ' + fmtTime(act.seconds) + '</div><p><button class="btn" id="h_resume">Tiếp tục làm đề</button></p></div>';
   }
@@ -109,9 +112,10 @@ function renderHome() {
   ST.bank.weeks.forEach(function (w) {
     var c = weekCfg(w.week), open = isOpen(c), canStart = open || ST.user.admin, st = weekStats(w.week);
     var note = !open ? lockText(c) : (c.to ? 'Đóng lúc ' + fmtDate(c.to) : 'Không giới hạn thời gian');
+    var meta = w.week === 10 ? '5 trắc nghiệm + 14 tính toán + 1 vẽ đồ thị MCC' : (w.calc ? w.theory + ' trắc nghiệm + ' + w.calc + ' tính toán' : w.theory + ' trắc nghiệm');
     html += '<div class="wk"><div class="wk-h"><span class="wk-n">Tuần ' + w.week + '</span><span class="pill ' + (open ? 'open' : 'lock') + '">' + (open ? 'Đang mở' : 'Khóa') + '</span></div>' +
       '<div class="wk-t">' + esc(w.title) + '</div><div class="wk-c">' + esc(w.chapter) + '</div>' +
-      '<div class="wk-m"><span>' + (w.calc ? w.theory + ' trắc nghiệm + ' + w.calc + ' tính toán' : w.theory + ' trắc nghiệm') + '</span><span>Đã nộp ' + st.n + ' đề' + (st.best != null ? ' · cao nhất ' + fmtNum(st.best, 1) : '') + '</span><span>' + esc(note) + '</span></div>' +
+      '<div class="wk-m"><span>' + meta + '</span><span>Đã nộp ' + st.n + ' đề' + (st.best != null ? ' · cao nhất ' + fmtNum(st.best, 1) : '') + '</span><span>' + esc(note) + '</span></div>' +
       '<div class="wk-b"><button class="btn start" data-w="' + w.week + '" ' + (!canStart || act ? 'disabled' : '') + '>Làm đề ngẫu nhiên</button><button class="btn sec th" data-w="' + w.week + '">Ôn lý thuyết</button></div></div>';
   });
   app.innerHTML = html + '</div>';
@@ -145,6 +149,10 @@ function renderExam() {
   var html = '<div class="timer"><div><b>' + wkLabel(ex.week) + ' – Đề ngẫu nhiên</b><div class="mut" id="sv">Đã lưu ' + ex.saves + (ST.user.admin ? ' lần (không giới hạn)' : '/' + MAXA + ' lần') + '</div></div><div class="t" id="tm">' + fmtTime(elapsed()) + '</div><div><button class="btn sec" id="x_save">Lưu bài</button> <button class="btn sec" id="x_dis">Hủy đề (chưa làm)</button> <button class="btn" id="x_sub">Nộp bài & chấm điểm</button></div></div>';
   ex.qids.forEach(function (id, i) {
     var q = findQuestion(id); if (!q) return;
+    if (q.type === 'mcc') {
+      html += '<div class="q"><div><span class="n">Câu ' + (i + 1) + '. Vẽ đồ thị chi phí sử dụng vốn cận biên (MCC)</span> <span class="mut">(5 điểm)</span></div>' + window.MCC.examHtml(q, ex.answers[q.id]) + '</div>';
+      return;
+    }
     html += '<div class="q"><div><span class="n">Câu ' + (i + 1) + '.</span> ' + esc(q.text) + ' <span class="mut">(5 điểm)</span></div>';
     if (q.type === 'mcq') {
       q.options.forEach(function (o, j) {
@@ -159,6 +167,11 @@ function renderExam() {
   app.innerHTML = html;
   app.querySelectorAll('input[type=radio]').forEach(function (r) { r.onchange = function () { ex.answers[r.name] = r.value; saveDraft(); }; });
   app.querySelectorAll('input[data-q]').forEach(function (r) { r.oninput = function () { ex.answers[r.getAttribute('data-q')] = r.value; saveDraft(); }; });
+  if (window.MCC) {
+    var onMcc = function (qid, val) { if (val) ex.answers[qid] = val; else delete ex.answers[qid]; saveDraft(); };
+    onMcc.saved = function (qid) { return ex.answers[qid]; };
+    window.MCC.bind(app, onMcc);
+  }
   $('#x_dis').onclick = discardExam;
   $('#x_save').onclick = saveExam;
   $('#x_sub').onclick = submitExam;
@@ -260,6 +273,7 @@ function reviewHtml(detail, onlyWrong) {
   if (!list.length) return '<div class="card">Bạn trả lời đúng tất cả các câu. Tuyệt vời!</div>';
   return list.map(function (x) {
     var d = x.d, q = findQuestion(d.q), opts = '';
+    if (q && q.type === 'mcc') return window.MCC.reviewHtml(d, x.i + 1);
     if (q && q.type === 'mcq') opts = '<div class="ropts">' + q.options.map(function (o, j) { var cls = L[j] === d.k ? 'k' : (L[j] === String(d.a).toUpperCase() ? 'w' : ''); return '<div class="ro ' + cls + '"><b>' + L[j] + '.</b> ' + esc(o) + '</div>'; }).join('') + '</div>';
     return '<div class="q ' + (d.ok ? 'ok' : 'bad') + '"><div class="qh"><span class="n">Câu ' + (x.i + 1) + '</span><span class="tag ' + (d.ok ? 'ok' : 'bad') + '">' + (d.ok ? '✓ Đúng' : (d.a ? '✗ Sai' : '✗ Bỏ trống')) + '</span></div><div class="qt">' + esc(q ? q.text : d.q) + '</div>' + opts +
       '<div class="ans"><div>Bạn trả lời: <b>' + esc(ansText(q, d)) + '</b></div>' + (d.ok ? '' : '<div>Đáp án đúng: <b>' + esc(keyText(q, d)) + '</b></div>') + '</div>' +
@@ -329,11 +343,11 @@ function renderChapter() {
     var c = weekCfg(w), open = isOpen(c), st = weekStats(w);
     return '<div class="chb"><button class="btn ' + (w >= 300 ? 'sec ' : '') + 'start" data-w="' + w + '" ' + (!(open || ST.user.admin) || act ? 'disabled' : '') + '>' + label + '</button><span class="mut">' + (open ? 'Đã nộp ' + st.n + ' đề' + (st.best != null ? ' · cao nhất ' + fmtNum(st.best, 1) : '') : esc(lockText(c))) + '</span></div>';
   }
-  var html = '<h1>Ôn theo chương</h1><p class="mut">Ôn riêng từng chương: phần <b>Lý thuyết</b> gồm 20 câu trắc nghiệm, phần <b>Bài tập</b> gồm 20 câu tính toán điền đáp số, bốc ngẫu nhiên từ các tuần thuộc chương đó. Quy tắc lưu bài, nộp bài và xem lời giải giống ôn theo tuần.</p>';
+  var html = '<h1>Ôn theo chương</h1><p class="mut">Ôn riêng từng chương: phần <b>Lý thuyết</b> gồm 20 câu trắc nghiệm, phần <b>Bài tập</b> gồm 20 câu tính toán điền đáp số (riêng Chương 5 có 1 câu vẽ đồ thị MCC), bốc ngẫu nhiên từ các tuần thuộc chương đó. Quy tắc lưu bài, nộp bài và xem lời giải giống ôn theo tuần.</p>';
   if (act) html += '<div class="card" style="border-color:var(--pri)"><h2>Bạn đang làm dở một đề</h2><div>' + wkLabel(act.week) + ' · đã lưu ' + act.saves + ' lần</div><p><button class="btn" id="h_resume">Tiếp tục làm đề</button></p></div>';
   html += '<div class="grid">' + CHAPTERS.map(function (c) {
     return '<div class="wk"><div class="wk-h"><span class="wk-n">Chương ' + c[0] + '</span><span class="mut">' + c[2] + '</span></div><div class="wk-t">' + esc(c[1]) + '</div>' +
-      '<div class="chs">' + btn(200 + c[0], 'Lý thuyết (20 câu)') + (c[0] > 1 ? btn(300 + c[0], 'Bài tập (20 câu)') : '<div class="chb"><button class="btn sec" disabled title="Chương 1 không có bài tập tính toán">Bài tập (20 câu)</button><span class="mut">Chương 1 không có bài tập tính toán</span></div>') + '</div></div>';
+      '<div class="chs">' + btn(200 + c[0], 'Lý thuyết (20 câu)') + (c[0] > 1 ? btn(300 + c[0], c[0] === 5 ? 'Bài tập (19 câu + 1 vẽ đồ thị)' : 'Bài tập (20 câu)') : '<div class="chb"><button class="btn sec" disabled title="Chương 1 không có bài tập tính toán">Bài tập (20 câu)</button><span class="mut">Chương 1 không có bài tập tính toán</span></div>') + '</div></div>';
   }).join('') + '</div>';
   app.innerHTML = html;
   var r = $('#h_resume'); if (r) r.onclick = function () { openExam(); };
