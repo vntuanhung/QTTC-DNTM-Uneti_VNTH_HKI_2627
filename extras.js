@@ -1,4 +1,4 @@
-/* extras.js – v26.05: lịch sử phiên bản (pop-up) + liên kết "Vẽ đồ thị MCC" trên thanh menu */
+/* extras.js – v26.05: lịch sử phiên bản (pop-up) */
 (function () {
   'use strict';
   var CUR = { v: 'v26.05', d: '26/11/2026' };
@@ -39,15 +39,8 @@
       el.querySelector('.verlink').addEventListener('click', openHist);
     });
   }
-  function addNav() {
-    var nav = document.getElementById('nav'); if (!nav || nav.querySelector('.navx') || !nav.children.length) return;
-    var a = document.createElement('a'); a.className = 'navx'; a.href = 'mcc.html'; a.textContent = 'Vẽ đồ thị MCC';
-    var ref = nav.querySelector('[data-t="history"]'); nav.insertBefore(a, ref || null);
-  }
   function init() {
-    setVer(); addNav();
-    var nav = document.getElementById('nav');
-    if (nav && window.MutationObserver) new MutationObserver(addNav).observe(nav, { childList: true });
+    setVer();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
